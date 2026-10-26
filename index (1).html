@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SBI Deposit Slip Tool</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--tx:#1b1f24;--mu:#667;--bd:#d5d9df;--ac:#1a56db;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161a;--card:#1e2126;--tx:#e8eaed;--mu:#9aa0a8;--bd:#33383f;--ac:#6ea0ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.app{display:grid;grid-template-columns:340px 1fr;gap:16px;padding:16px;max-width:1500px;margin:auto}
+@media(max-width:900px){.app{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px}
+h1{font-size:17px;margin:0 0 4px}h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:16px 0 6px}
+p.s{margin:0;color:var(--mu);font-size:12px}
+label{display:block;font-size:12px;color:var(--mu);margin-top:8px}
+input,select{width:100%;padding:7px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx);font:inherit}
+input[type=checkbox]{width:auto}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.den{display:grid;grid-template-columns:62px 1fr 90px;gap:6px;align-items:center;margin-bottom:4px}
+.den b{font-weight:600}.den span{text-align:right;color:var(--mu)}
+.ch{display:grid;grid-template-columns:1fr 90px;gap:6px;margin-bottom:5px}
+button{padding:9px 14px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--tx);font:inherit;cursor:pointer}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:600}
+.tot{font-weight:600;margin-top:8px;display:flex;justify-content:space-between}
+#warn{color:#c0392b;font-size:12px;margin-top:6px}
+.view{min-width:0}
+.bar2{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.bar2 select{width:auto}.bar2 label{margin:0;display:flex;gap:5px;align-items:center}
+.sheet{overflow:hidden;background:#fff;border:1px solid var(--bd);border-radius:6px;margin-bottom:12px}
+/* ---- slip: exact 1568x600 coordinate replica of the PDF ---- */
+.slip{--ln:#000;position:relative;width:1568px;height:600px;background:#fff;color:#000;font:13px Arial,Helvetica,sans-serif;transform-origin:0 0}
+.slip.dataonly{--ln:transparent}
+.slip.dataonly .st{color:transparent!important}
+.slip.dataonly .blk{background:transparent!important}
+.a{position:absolute;white-space:nowrap;transform:translateY(-50%)}
+.bx,.hl{transform:none;border:1px solid var(--ln)}
+.hl{border:0;border-top:1px solid var(--ln);height:0}
+.vd{border:0;border-left:1px dashed var(--ln);width:0;transform:none}
+.blk{background:#000;transform:none;color:#fff}
+.cn{display:flex;align-items:center;justify-content:center;transform:translateY(-50%)}
+.d{font:700 15px Arial,sans-serif;color:#000}
+.t17{font:700 17px Arial}.t12{font:700 12.5px Arial}.t10{font-size:10px}
+.back{display:none;padding:34px 40px;font-size:15px;line-height:1.5}
+.back h3{margin:0 0 14px;font-size:20px}.back p{margin:0 0 10px}
+@page{size:A4 landscape;margin:8mm}
+@media print{
+ body{background:#fff}.app{display:block;padding:0}.panel,.bar2{display:none}
+ .sheet{border:0;border-radius:0;margin:0;overflow:visible}
+ .slip{zoom:.6773!important}.back{zoom:.6773;page-break-before:always;width:1568px}
+}
+</style></head><body>
+<div class="app">
+<div class="panel" id="form">
+ <h1>SBI Deposit / Pay-in Slip</h1>
+ <p class="s">Fill the details; the slip updates live. Print on A4 landscape at 100% scale.</p>
+ <h2>Account</h2>
+ <label>Branch</label><input id="branch">
+ <div class="r2"><div><label>Date</label><input id="date" type="date"></div><div><label>Mobile / Tel</label><input id="tel" inputmode="tel"></div></div>
+ <label>Account / Credit card number</label><input id="acc" inputmode="numeric" maxlength="19">
+ <label>Depositor name</label><input id="name">
+ <label>E-mail ID</label><input id="email" type="email">
+ <label>PAN (cash deposit of ₹50,000 and above)</label><input id="pan" maxlength="10" style="text-transform:uppercase">
+ <label><input type="checkbox" id="f60" style="margin-right:6px">Form 60 attached (tick box)</label>
+ <h2>Cash deposit – number of notes</h2>
+ <div id="dens"></div>
+ <div class="den"><b>Coins ₹</b><input id="coins" type="number" min="0" placeholder="amount"><span></span></div>
+ <div class="tot"><span>Cash total</span><span id="cashT">0</span></div>
+ <h2>Cheques (optional)</h2>
+ <div class="ch"><input id="c1d" placeholder="Cheque no./date/bank &amp; branch"><input id="c1a" type="number" min="0" placeholder="₹"></div>
+ <div class="ch"><input id="c2d" placeholder="Cheque no./date/bank &amp; branch"><input id="c2a" type="number" min="0" placeholder="₹"></div>
+ <div class="ch"><input id="c3d" placeholder="Cheque no./date/bank &amp; branch"><input id="c3a" type="number" min="0" placeholder="₹"></div>
+ <div id="warn"></div>
+ <div class="tot"><span>Grand total</span><span id="grandT">0</span></div>
+ <div style="margin-top:12px;display:flex;gap:8px"><button class="p" onclick="dlPdf()">Download PDF</button><button onclick="doPrint()">Print</button><button onclick="clearAll()">Clear</button></div>
+ <div id="msg" style="margin-top:8px;font-size:12px;color:var(--mu)"></div>
+</div>
+<div class="view">
+ <div class="bar2"><b>Preview</b>
+  <select id="mode"><option value="full">Full slip (blank paper)</option><option value="data">Entries only (pre-printed slip)</option></select>
+  <label><input type="checkbox" id="bk">Include back side (instructions)</label></div>
+ <div class="sheet" id="wrap"><div class="slip" id="slip"></div></div>
+ <div class="sheet" id="bwrap" style="display:none"><div class="slip back" id="back" style="height:600px"></div></div>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const DEN=[2000,1000,500,100,50,20,10,5];
+$('dens').innerHTML=DEN.map(d=>`<div class="den"><b>${d} ×</b><input id="n${d}" type="number" min="0" placeholder="0"><span id="v${d}">0</span></div>`).join('');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num=id=>Math.max(0,parseFloat($(id).value)||0);
+const fmt=n=>n?n.toLocaleString('en-IN',{maximumFractionDigits:2}):'';
+const ONES=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+const TENS=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+const two=n=>n<20?ONES[n]:TENS[Math.floor(n/10)]+(n%10?' '+ONES[n%10]:'');
+function words(n){if(!n)return'';const o=[],cr=Math.floor(n/1e7),lk=Math.floor(n/1e5)%100,th=Math.floor(n/1e3)%100,hu=Math.floor(n/100)%10,rm=n%100;
+ if(cr)o.push(words(cr)+' Crore');if(lk)o.push(two(lk)+' Lakh');if(th)o.push(two(th)+' Thousand');if(hu)o.push(ONES[hu]+' Hundred');if(rm)o.push(two(rm));return o.join(' ')}
+const wl=(t,m)=>{if(t.length<=m)return[t,''];const i=t.lastIndexOf(' ',m);return[t.slice(0,i),t.slice(i+1)]};
+/* helpers (coordinates in the PDF's 1568x600 space) */
+const S=(x,y,t,s='')=>`<div class="a st" style="left:${x}px;top:${y}px;${s}">${t}</div>`;
+const Dt=(x,y,t,s='')=>t===''?'':`<div class="a d" style="left:${x}px;top:${y}px;${s}">${esc(t)}</div>`;
+const Bx=(x,y,w,h)=>`<div class="a bx" style="left:${x}px;top:${y}px;width:${w+1}px;height:${h+1}px"></div>`;
+const Ln=(x1,x2,y)=>`<div class="a hl" style="left:${x1}px;top:${y}px;width:${x2-x1}px"></div>`;
+const Blk=(x,y,w,h)=>`<div class="a blk" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"></div>`;
+const DB=(x,y,w,h,t,al='center')=>t===''?'':`<div class="a d" style="left:${x}px;top:${y+h/2}px;width:${w}px;text-align:${al};padding:0 5px">${esc(t)}</div>`;
+const Cells=(x,y,w,h,n,str)=>{let o='';const cw=w/n;for(let i=0;i<n;i++)o+=Bx(x+i*cw,y,cw,h)+DB(x+i*cw,y,cw,h,str[i]||'');return o};
+const logo=(x,y)=>`<svg class="a st" style="left:${x}px;top:${y+12}px;width:24px;height:24px" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="currentColor"/><circle cx="20" cy="15" r="6" fill="#fff"/><rect x="17.5" y="17" width="5" height="16" fill="#fff"/></svg>`;
+const sbi=(x,y,br)=>logo(x,y)+S(x,y+39,'<b style="font-family:Georgia,serif;font-size:13px">State Bank of India</b>')+S(x,y+61,'<b>Branch :</b>')+Dt(x+68,y+61,br);
+function table(X,y0,rows,hdr,tx,cx){ // X=[left,...edges], rows data
+ let o=Blk(X[0],y0,X[X.length-1]-X[0],21)+S(X[0]+12,y0+11,hdr,'color:#fff')+S(cx[0],y0+11,'₹','color:#fff')+S(cx[1],y0+11,'P.','color:#fff');
+ for(let r=0;r<4;r++){const y=y0+22+r*21,last=r==3;
+  const E=[X[0],X[1],X[5],X[6]];for(let c=0;c<3;c++){ if(last&&c==0)continue; o+=Bx(E[c],y,E[c+1]-E[c],21);}
+  if(last)o+=S(X[1]-48,y+11,'Total');
+  const rw=rows[r]||{};
+  if(!last){o+=DB(X[0],y,X[1]-X[0],21,rw.d||'','left');}
+  const rs=last?rows.tot:rw.a;
+  if(rs!==undefined&&rs>0){const w=Math.floor(rs),p=Math.round((rs-w)*100);o+=DB(X[1],y,X[5]-X[1],21,fmt(w),'right');o+=DB(X[5],y,X[6]-X[5],21,String(p).padStart(2,'0'),'center');}
+ }return o}
+function render(){
+ let cash=0;DEN.forEach(d=>{const v=Math.floor(num('n'+d))*d;cash+=v;$('v'+d).textContent=v?fmt(v):'0'});
+ const coins=num('coins');cash+=coins;
+ const ch=[1,2,3].map(i=>({d:$('c'+i+'d').value,a:num('c'+i+'a')})).filter(c=>c.d||c.a);
+ const rows=(cash?[{d:'Cash',a:cash}]:[]).concat(ch);
+ $('warn').textContent=rows.length>3?'The slip has only 3 rows – extra entries will not show. Use a second slip.':'';
+ const chT=ch.reduce((s,c)=>s+c.a,0),grand=cash+chT;rows.tot=grand;
+ $('cashT').textContent=fmt(cash)||'0';$('grandT').textContent=fmt(grand)||'0';
+ const v=$('date').value,[Y,M,D]=v?v.split('-'):['','',''],acc=$('acc').value.replace(/\s/g,''),pan=$('pan').value.toUpperCase();
+ const whole=Math.floor(grand),paise=Math.round((grand-whole)*100);
+ const w=grand?`Rupees ${words(whole)||'Zero'}${paise?' and '+two(paise)+' Paise':''} Only`:'';
+ const br=$('branch').value,nm=$('name').value,tel=$('tel').value;
+ let h='';
+ /* LEFT */
+ h+=S(288,87,'DEPOSIT / PAY IN SLIP','transform:translate(-50%,-50%);font:700 17px Arial')+sbi(80,109,br);
+ h+=S(393,190,'Date :')+S(452,190,'/')+S(479,190,'/')+S(485,190,'20')+DB(428,180,24,20,D)+DB(455,180,24,20,M)+DB(496,180,24,20,Y.slice(2),'left');
+ h+=S(80,215,'SB/CA/RD/OD/CC/TL/DL A/c No./Credit Card No.','font-size:10.5px')+Cells(80,228,416,21,16,acc);
+ h+=S(80,270,'Name')+Ln(122,497,276)+Dt(126,266,nm)+S(80,290,'Tel. No.')+Ln(133,497,298)+Dt(137,288,tel);
+ h+=S(307,313,'₹')+S(472,313,'P.')+S(80,332,'Amount')+Bx(143,321,323,21)+Bx(466,321,31,21)+DB(143,321,323,21,grand?fmt(whole):'','right')+DB(466,321,31,21,grand?String(paise).padStart(2,'0'):'');
+ h+=S(80,358,'Rupees in words')+Ln(192,497,366)+Dt(196,356,wl(w,40)[0],'font-size:13px')+Dt(84,381,wl(w,40)[1],'font-size:13px')+Ln(80,497,391);
+ h+=table([80,338,364,390,416,470,497],405-0,rows,'Cash/Cheque No./Date &amp; Name of Bank &amp; Branch',0,[403,478]).replace(/x/g,'x');
+ h+=S(80,545,'SWO / Passing Officer')+Bx(299,513,198,54)+S(398,531,'SBI toll free, 24 Hours Call Centre','transform:translate(-50%,-50%);font-size:12px')+S(398,550,'No. 18004253800, 1800112211','transform:translate(-50%,-50%);font-size:12px');
+ h+=`<div class="a vd" style="left:527px;top:0;height:600px"></div>`;
+ /* MIDDLE */
+ h+=Bx(551,123,417,83)+S(620,149,'<b>PAN NO.</b><br><b>OR</b><br><b>Form 60</b>','transform:translateY(-50%);line-height:15px;font-size:11px')+Cells(678,139,218,21,10,pan)+Bx(680,167,22,22)+(($('f60').checked)?DB(680,167,22,22,'✓'):'')+S(759,197,'For Cash Deposit of ₹ 50,000/- &amp; Above','transform:translate(-50%,-50%);font-size:11px');
+ h+=Blk(551,207,417,25)+S(759,219,'<b>CASH DEPOSIT</b>','transform:translate(-50%,-50%);color:#fff;font-size:13px');
+ const mx=[551,655,719,926,968];
+ const mrow=(y,a,b,c,d,e)=>{let o='';mx.slice(0,4).forEach((x,i)=>o+=Bx(x,y,mx[i+1]-x,22));return o};
+ h+=mrow(232)+S(603,243,'Notes','transform:translate(-50%,-50%)')+S(687,243,'No.','transform:translate(-50%,-50%)')+S(822,243,'₹','transform:translate(-50%,-50%)')+S(947,243,'P.','transform:translate(-50%,-50%)');
+ DEN.forEach((d,i)=>{const y=254+i*22,c=Math.floor(num('n'+d));h+=mrow(y)+S(560,y+11,d+' x')+DB(655,y,64,22,c||'')+DB(719,y,207,22,c?fmt(c*d):'','right')+DB(926,y,42,22,c?'00':'')});
+ h+=mrow(430)+S(560,441,'Coins')+DB(719,430,207,22,coins?fmt(coins):'','right')+DB(926,430,42,22,coins?'00':'');
+ h+=Bx(719,452,207,26)+Bx(926,452,42,26)+Bx(655,452,64,26)+S(687,465,'Total','transform:translate(-50%,-50%)')+DB(719,452,207,26,cash?fmt(cash):'','right')+DB(926,452,42,26,cash?'00':'');
+ h+=Bx(551,489,417,78)+S(559,502,'1. All Cheques must be crossed.','font-size:11.5px')+S(559,521,'2. Please mention your A/c No. and Name on back of the Cheque.','font-size:11.5px')+S(559,540,'3. Please use separate slips for Cash Deposit, Outstation Cheques and Local','font-size:11.5px')+S(570,557,'Cheques.','font-size:11.5px');
+ /* RIGHT */
+ h+=S(1240,87,'DEPOSIT / PAY IN SLIP','transform:translate(-50%,-50%);font:700 17px Arial')+sbi(995,109,br);
+ h+=S(1278,158,'Date')+Cells(1312,147,175,21,8,D+M+Y);
+ h+=S(995,198,'SB/CA/RD/OD/CC/TL/DL A/c No./Credit Card No.','font-size:10.5px')+Cells(995,210,492,23,19,acc);
+ h+=S(995,261,'Name')+Ln(1040,1487,266)+Dt(1044,256,nm)+S(995,285,'Tel. No./Mobile No.')+Ln(1112,1487,291)+Dt(1116,281,tel)+S(995,305,'E-mail ID')+Ln(1058,1487,311)+Dt(1062,301,$('email').value)+S(995,328,'Rupees in words')+Ln(1094,1487,334)+Dt(1098,324,wl(w,52)[0],'font-size:13px')+Dt(999,348,wl(w,52)[1],'font-size:13px')+Ln(995,1487,358);
+ h+=table([995,1327,1354,1380,1406,1460,1487],375,rows,'Cheque No./Date/Name of Bank &amp; Branch',0,[1385,1462]);
+ h+=Bx(995,500,198,60)+S(1094,515,'Transaction ID','transform:translate(-50%,-50%)')+Ln(995,1193,534)+S(1002,551,'SWO')+S(1099,551,'Passing Officer')+S(1333,585,'Signature of Depositor','font-size:14px');
+ h+=S(1510,520,'100999131-V3','transform:translate(-50%,-50%) rotate(-90deg);font-size:9px');
+ $('slip').className='slip'+($('mode').value==='data'?' dataonly':'');
+ $('slip').innerHTML=h;
+ $('bwrap').style.display=$('bk').checked?'block':'none';fit();
+}
+$('back').innerHTML=`<h3>विविध निर्देश / Miscellaneous Instructions</h3>
+<p>* कृपया अपनी पास बुक महीने में एक बार अवश्य अद्यतन करवाएँ। Please get your Pass Book updated once in a month</p>
+<p>* कृपया अपने खाते के ब्यौरे/इंटरनेट बैंकिंग यूज़र आईडी और पासवर्ड/एटीएम डेबिट कार्ड/क्रेडिट कार्ड/मोबाइल बैंकिंग/व्यक्तिगत जानकारी किसी भी व्यक्ति को प्रकट न करें। Please do not disclose your Account details/Internet Banking User ID and Passwords/ATM Debit Card/Credit Card/Mobile Banking/Personal Information to any person.</p>
+<p>* सभी शुल्क/शर्तें समय समय पर परिवर्तनीय हैं। कृपया अधिक जानकारी के लिए बैंक की वेबसाइट www.sbi.co.in को देखें। All charges/stipulations are subject to change from time to time. Please visit Bank's website www.sbi.co.in for further information.</p>
+<p>* नकद जमा ₹ 50000/- से अधिक के लिए, कृपया अपना पैन संख्या का उल्लेख करें अथवा फार्म 60 की हस्ताक्षरित कॉपी प्रस्तुत करें। For Cash Deposit exceeding ₹ 50000/- please mention your PAN No. or submit signed copy of Form 60.</p>
+<p>* ग्राहक यह सुनिश्चित करें कि जमा पर्ची का ब्यौरा सही है एवं चैक/लिखित/नकदी के विवरण के साथ मेल खाता है। The customer is obliged to ensure that the details on the deposit slip are accurate and match with the details of the cheque/instrument/cash.</p>
+<p>* झूठे वादों के शिकार न हों, संदिग्ध योजनाओं से सावधान रहें। Do not fall prey to false promises, beware of dubious schemes.</p>`;
+function fit(){['slip','back'].forEach(id=>{const s=$(id),w=s.parentElement;s.style.zoom='';const z=Math.min(1,(w.clientWidth||1568)/1568);s.style.zoom=z});}
+const msg=t=>{$('msg').textContent=t};
+async function snap(){const out=[],ids=['slip'].concat($('bk').checked?['back']:[]),a=$('wrap'),b=$('bwrap');a.style.overflow='visible';b.style.overflow='visible';
+ for(const id of ids){const el=$(id),z=el.style.zoom;el.style.zoom=1;const c=await html2canvas(el,{scale:3,backgroundColor:'#fff'});el.style.zoom=z;out.push(c.toDataURL('image/png'))}
+ a.style.overflow='';b.style.overflow='';return out}
+async function mkPdf(){const imgs=await snap(),{jsPDF}=window.jspdf,pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});imgs.forEach((im,i)=>{if(i)pdf.addPage();pdf.addImage(im,'PNG',8,8,281,281*600/1568)});return pdf}
+async function dlPdf(){try{msg('Preparing PDF…');const pdf=await mkPdf(),dl=window.claude?await claude.use('downloads'):null;if(dl){await dl.save({filename:'SBI-deposit-slip.pdf',data:pdf.output('arraybuffer')});msg('PDF ready.')}else{pdf.save('SBI-deposit-slip.pdf');msg('')}}catch(e){msg(e&&e.code==='declined'?'Download cancelled.':'Could not create PDF: '+((e&&e.message)||e))}}
+async function doPrint(){try{msg('Preparing print…');const pdf=await mkPdf();pdf.autoPrint();const w=window.open(URL.createObjectURL(pdf.output('blob')),'_blank');if(w){msg('PDF opened – print from there.')}else{msg('Pop-up blocked. Use Download PDF and print the file.');window.print()}}catch(e){msg('Use Download PDF, then print the file.')}}
+function clearAll(){document.querySelectorAll('#form input').forEach(i=>{i.type=='checkbox'?i.checked=false:i.value=''});render()}
+document.querySelectorAll('input,select').forEach(i=>i.addEventListener('input',render));
+window.addEventListener('resize',fit);
+$('date').valueAsDate=new Date();
+render();
+</script></body></html>
